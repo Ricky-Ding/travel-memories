@@ -3,8 +3,8 @@ class MemoryManager {
     constructor() {
         this.memories = [];
         this.storageKey = 'travel_memories';
-        this.apiKey = 'YOUR_JSONBIN_API_KEY'; // 注册 https://jsonbin.io 获取
-        this.binId = 'YOUR_BIN_ID'; // 创建 Bin 后获取
+        this.apiKey = '$2a$10$F86ANUc7v/rvTzIIDo3HKOzBEsjNvWirQGPAZqlf6PuS99QJ1X4om'; // 注册 https://jsonbin.io 获取
+        this.binId = '6a59dd0ada38895dfe69b8f9'; // 创建 Bin 后获取
         this.loadMemories();
     }
 
