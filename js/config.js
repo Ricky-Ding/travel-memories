@@ -2,7 +2,7 @@
 // 修改这里的 API Key 和 Bin ID
 
 const CONFIG = {
-    apiKey: '你的JSONBin_API_Key',   // ← 改成你的
-    binId: '你的Bin_ID',             // ← 改成你的
+    apiKey: '$2a$10$F86ANUc7v/rvTzIIDo3HKOzBEsjNvWirQGPAZqlf6PuS99QJ1X4om',
+    binId: '6a59dd0ada38895dfe69b8f9',
     storageKey: 'travel_memories'
 };
