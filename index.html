@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我们的旅行记忆</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧地图 -->
+        <div id="map"></div>
+        
+        <!-- 右侧详情面板 -->
+        <div id="detail-panel" class="detail-panel">
+            <div class="panel-header">
+                <h2>❤️ 我们的旅行记忆</h2>
+                <button id="close-panel" class="close-btn">&times;</button>
+            </div>
+            
+            <!-- 城市列表概览 -->
+            <div id="city-list" class="city-list">
+                <h3>📍 去过的地方</h3>
+                <div id="city-cards"></div>
+            </div>
+            
+            <!-- 城市详情 -->
+            <div id="city-detail" class="city-detail" style="display: none;">
+                <button id="back-to-list" class="back-btn">← 返回列表</button>
+                <h3 id="detail-city-name"></h3>
+                <p id="detail-date"></p>
+                <div id="detail-photos" class="photo-gallery"></div>
+                <div id="detail-description" class="description"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
