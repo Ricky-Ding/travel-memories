@@ -1,6 +1,3 @@
-// ============ 配置文件 ============
-// 修改这里的 API Key 和 Bin ID
-
 const CONFIG = {
     apiKey: '$2a$10$F86ANUc7v/rvTzIIDo3HKOzBEsjNvWirQGPAZqlf6PuS99QJ1X4om',
     binId: '6a59dd0ada38895dfe69b8f9',
