@@ -50,7 +50,6 @@ class UIManager {
             </div>
         `).join('');
 
-        // 绑定事件
         document.querySelectorAll('.city-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 if (!e.target.closest('.city-card-actions')) {
@@ -103,7 +102,7 @@ class UIManager {
             <div class="photo-gallery">
                 ${memory.photos.length > 0 ? memory.photos.map((photo, index) => `
                     <div class="photo-item" onclick="ui.openPhotoViewer('${photo.url}', '${photo.caption || ''}')">
-                        <img src="${photo.url}" alt="">
+                        <img src="${photo.thumbnail || photo.url}" alt="${photo.caption || ''}" onerror="this.style.display='none'">
                         ${photo.caption ? `<div class="photo-overlay">${photo.caption}</div>` : ''}
                         <button onclick="event.stopPropagation();ui.removePhoto('${memory.id}',${index})"
                             style="position:absolute;top:5px;right:5px;background:rgba(255,0,0,0.8);color:white;border:none;width:24px;height:24px;border-radius:50%;cursor:pointer;z-index:10;">×</button>
@@ -154,6 +153,7 @@ class UIManager {
         
         this.pendingPhotos = memory.photos.map(p => ({
             dataUrl: p.url,
+            thumbnail: p.thumbnail || null,
             caption: p.caption || '',
             isExisting: true
         }));
@@ -169,6 +169,7 @@ class UIManager {
         if (!memory) return;
         this.pendingPhotos = memory.photos.map(p => ({
             dataUrl: p.url,
+            thumbnail: p.thumbnail || null,
             caption: p.caption || '',
             isExisting: true
         }));
@@ -255,6 +256,7 @@ class UIManager {
 
         const photos = this.pendingPhotos.map(p => ({
             url: p.dataUrl,
+            thumbnail: p.thumbnail || null,
             caption: p.caption || ''
         }));
 
@@ -299,16 +301,50 @@ class UIManager {
         }
     }
 
-    // ============ 照片处理 ============
+    // ============ 照片处理（ImgBB 优先，失败降级本地） ============
     async handlePhotoUpload(files) {
-        for (const file of files) {
-            try {
-                const compressed = await this.photoManager.compressImage(file);
-                this.pendingPhotos.push({ dataUrl: compressed, caption: '', isNew: true });
-            } catch (error) {
-                this.showToast(error.message, 'error');
+        let usedImgBB = false;
+        
+        // 尝试 ImgBB 上传
+        if (typeof IMGBB_CONFIG !== 'undefined' && IMGBB_CONFIG.apiKey) {
+            const imgbbUploader = new ImgBBUploader(IMGBB_CONFIG.apiKey);
+            
+            for (const file of files) {
+                try {
+                    this.showToast('📤 正在上传照片...', 'info');
+                    const result = await imgbbUploader.upload(file);
+                    
+                    this.pendingPhotos.push({
+                        dataUrl: result.url,
+                        thumbnail: result.thumbnail,
+                        caption: '',
+                        isNew: true
+                    });
+                    usedImgBB = true;
+                    this.showToast('✅ 照片上传成功！', 'success');
+                } catch (error) {
+                    console.warn('ImgBB 上传失败，降级为本地存储:', error);
+                }
             }
         }
+        
+        // 降级：本地压缩存储
+        if (!usedImgBB) {
+            for (const file of files) {
+                try {
+                    const compressed = await this.photoManager.compressImage(file);
+                    this.pendingPhotos.push({
+                        dataUrl: compressed,
+                        thumbnail: null,
+                        caption: '',
+                        isNew: true
+                    });
+                } catch (error) {
+                    this.showToast('❌ 照片处理失败', 'error');
+                }
+            }
+        }
+        
         this.renderPhotoPreviews();
     }
 
@@ -320,7 +356,7 @@ class UIManager {
             placeholder.style.display = 'none';
             previewsContainer.innerHTML = this.pendingPhotos.map((photo, index) => `
                 <div class="preview-item">
-                    <img src="${photo.dataUrl}" alt="">
+                    <img src="${photo.thumbnail || photo.dataUrl}" alt="" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2212%22>加载中</text></svg>'">
                     <button class="remove-photo" onclick="ui.removePendingPhoto(${index})">×</button>
                     <input type="text" class="photo-caption-input" 
                            placeholder="照片说明" value="${photo.caption || ''}"
