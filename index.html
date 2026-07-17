@@ -19,6 +19,13 @@
             <button id="add-memory-btn" class="btn btn-primary">
                 <i class="fas fa-plus"></i> 添加记忆
             </button>
+            <button id="export-data-btn" class="btn btn-secondary" title="导出数据">
+                <i class="fas fa-download"></i>
+            </button>
+            <label class="btn btn-secondary" title="导入数据">
+                <i class="fas fa-upload"></i>
+                <input type="file" id="import-data-input" accept=".json" hidden>
+            </label>
             <button id="sync-data-btn" class="btn btn-secondary" title="同步数据">
                 <i class="fas fa-sync-alt"></i>
             </button>
@@ -32,7 +39,6 @@
         
         <!-- 右侧面板 -->
         <div id="side-panel" class="side-panel">
-            <!-- 面板头部 -->
             <div class="panel-header">
                 <h2><i class="fas fa-map-marked-alt"></i> 旅行足迹</h2>
                 <div class="stats">
@@ -40,19 +46,16 @@
                 </div>
             </div>
             
-            <!-- 搜索框 -->
             <div class="search-box">
                 <i class="fas fa-search"></i>
                 <input type="text" id="search-input" placeholder="搜索城市...">
             </div>
             
-            <!-- 城市列表 -->
             <div id="city-list" class="city-list"></div>
             
-            <!-- 城市详情 -->
             <div id="city-detail" class="city-detail" style="display: none;">
                 <button id="back-btn" class="btn-back">
-                    <i class="fas fa-arrow-left"></i> 返回
+                    <i class="fas fa-arrow-left"></i> 返回列表
                 </button>
                 <div id="detail-content"></div>
             </div>
@@ -63,73 +66,61 @@
     <div id="memory-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="modal-title">添加旅行记忆</h2>
+                <h2 id="modal-title">✨ 添加旅行记忆</h2>
                 <button class="close-modal">&times;</button>
             </div>
             <form id="memory-form">
                 <input type="hidden" id="memory-id">
                 
                 <div class="form-group">
-                    <label for="city-name">
-                        <i class="fas fa-city"></i> 城市名称 *
-                    </label>
-                    <input type="text" id="city-name" required 
-                           placeholder="例如：北京">
+                    <label><i class="fas fa-city"></i> 城市名称 *</label>
+                    <input type="text" id="city-name" required placeholder="例如：北京、成都、大理...">
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-map-pin"></i> 在地图上点击选择位置 *</label>
+                    <div id="map-picker" style="height: 220px; border-radius: 10px; border: 2px solid #e0e0e0;"></div>
+                    <p style="font-size: 12px; color: #999; margin-top: 5px;">
+                        💡 点击地图选择城市位置，或拖拽标记微调
+                    </p>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="latitude">
-                            <i class="fas fa-map-pin"></i> 纬度 *
-                        </label>
-                        <input type="number" id="latitude" required 
-                               step="any" placeholder="39.9042">
+                        <label><i class="fas fa-map-pin"></i> 纬度</label>
+                        <input type="number" id="latitude" required step="any" placeholder="自动填入" readonly style="background: #f9f9f9;">
                     </div>
                     <div class="form-group">
-                        <label for="longitude">
-                            <i class="fas fa-map-pin"></i> 经度 *
-                        </label>
-                        <input type="number" id="longitude" required 
-                               step="any" placeholder="116.4074">
+                        <label><i class="fas fa-map-pin"></i> 经度</label>
+                        <input type="number" id="longitude" required step="any" placeholder="自动填入" readonly style="background: #f9f9f9;">
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <label for="travel-date">
-                        <i class="fas fa-calendar"></i> 旅行日期 *
-                    </label>
-                    <input type="text" id="travel-date" required 
-                           placeholder="例如：2024年3月">
+                    <label><i class="fas fa-calendar"></i> 旅行日期 *</label>
+                    <input type="text" id="travel-date" required placeholder="例如：2024年3月">
                 </div>
                 
                 <div class="form-group">
-                    <label for="description">
-                        <i class="fas fa-pen"></i> 旅行故事
-                    </label>
-                    <textarea id="description" rows="4" 
-                              placeholder="记录下你们的美好回忆..."></textarea>
+                    <label><i class="fas fa-pen"></i> 旅行故事</label>
+                    <textarea id="description" rows="4" placeholder="记录下你们的美好回忆..."></textarea>
                 </div>
                 
                 <div class="form-group">
-                    <label for="photos-upload">
-                        <i class="fas fa-images"></i> 照片
-                    </label>
+                    <label><i class="fas fa-images"></i> 照片</label>
                     <div class="photo-upload-area" id="photo-upload-area">
-                        <input type="file" id="photos-upload" 
-                               accept="image/*" multiple hidden>
+                        <input type="file" id="photos-upload" accept="image/*" multiple hidden>
                         <div class="upload-placeholder" id="upload-placeholder">
                             <i class="fas fa-cloud-upload-alt"></i>
-                            <p>点击上传照片</p>
-                            <span>支持 JPG、PNG 格式</span>
+                            <p>点击上传照片或拖拽到此处</p>
+                            <span>支持 JPG、PNG，自动压缩</span>
                         </div>
                         <div class="photo-previews" id="photo-previews"></div>
                     </div>
                 </div>
                 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary close-modal-btn">
-                        取消
-                    </button>
+                    <button type="button" class="btn btn-secondary close-modal-btn">取消</button>
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i> 保存记忆
                     </button>
@@ -147,6 +138,7 @@
 
     <!-- 提示消息 -->
     <div id="toast" class="toast"></div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/config.js"></script>
     <script src="js/memory-manager.js"></script>
