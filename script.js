@@ -170,89 +170,89 @@ class UIManager {
     constructor(memoryManager, photoManager) {
         this.memoryManager = memoryManager;
         this.photoManager = photoManager;
-        this.globe = null;
+        this.map = null;
         this.markers = [];
         this.currentMemoryId = null;
         this.pendingPhotos = [];
         this.editingMemoryId = null;
+        this.pickerMap = null;
+        this.pickerMarker = null;
         
-        this.initGlobe();
+        this.initMap();
         this.bindEvents();
         this.renderCityList();
     }
 
-    // 🌍 初始化 3D 地球
-    initGlobe() {
-        const container = document.getElementById('map');
+    initMap() {
+        this.map = L.map('map').setView([35.8617, 104.1954], 4);
         
-        this.globe = Globe()
-            .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
-            .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
-            .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
-            .showAtmosphere(true)
-            .atmosphereColor('#4a90e2')
-            .atmosphereAltitude(0.25)
-            .pointsData([])
-            .pointColor(() => '#ff6b6b')
-            .pointAltitude(0.01)
-            .pointRadius(0.5)
-            .pointsMerge(true)
-            (container);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(this.map);
         
-        // 启用自动旋转
-        this.globe.controls().autoRotate = true;
-        this.globe.controls().autoRotateSpeed = 0.5;
-        
-        // 响应式调整
-        window.addEventListener('resize', () => {
-            this.globe.width([container.clientWidth]);
-            this.globe.height([container.clientHeight]);
+        // 点击地图空白处取消选中
+        this.map.on('click', () => {
+            if (this.currentMemoryId) {
+                document.getElementById('back-btn').click();
+            }
         });
-        
-        this.updateGlobeMarkers();
     }
 
-    // 更新地球上的标记
-    updateGlobeMarkers() {
+    createIcon(isActive = false) {
+        const color = isActive ? '#ff4757' : '#ff6b6b';
+        const size = isActive ? 36 : 28;
+        return L.divIcon({
+            className: 'custom-marker',
+            html: `
+                <div style="
+                    width: ${size}px;
+                    height: ${size}px;
+                    background: ${color};
+                    border-radius: 50% 50% 50% 0;
+                    transform: rotate(-45deg);
+                    border: 3px solid white;
+                    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+                    transition: all 0.3s;
+                "></div>
+            `,
+            iconSize: [size, size],
+            iconAnchor: [size/2, size/2]
+        });
+    }
+
+    updateMapMarkers() {
+        this.markers.forEach(marker => this.map.removeLayer(marker));
+        this.markers = [];
+
         const memories = this.memoryManager.getAllMemories();
         
-        const pointsData = memories.map(memory => ({
-            lat: memory.coordinates[0],
-            lng: memory.coordinates[1],
-            size: memory.id === this.currentMemoryId ? 1.2 : 0.8,
-            color: memory.id === this.currentMemoryId ? '#ff4757' : '#ff6b6b',
-            name: memory.name,
-            id: memory.id
-        }));
-        
-        this.globe.pointsData(pointsData);
-        
-        // 点击标记事件
-        this.globe.onPointClick((point) => {
-            this.showMemoryDetail(point.id);
-            // 旋转地球到该位置
-            this.globe.pointOfView({
-                lat: point.lat,
-                lng: point.lng,
-                altitude: 2.5
-            }, 1000);
+        memories.forEach(memory => {
+            const marker = L.marker(memory.coordinates, {
+                icon: this.createIcon(memory.id === this.currentMemoryId)
+            }).addTo(this.map);
+
+            marker.bindTooltip(memory.name, {
+                permanent: false,
+                direction: 'top',
+                offset: [0, -15]
+            });
+
+            marker.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                this.showMemoryDetail(memory.id);
+                this.map.flyTo(memory.coordinates, 10, { duration: 1.5 });
+            });
+
+            this.markers.push(marker);
         });
-        
-        // 悬停提示
-        this.globe.pointLabel(d => d.name);
-        
-        // 自动调整视图
-        if (pointsData.length > 0) {
-            const firstPoint = pointsData[0];
-            this.globe.pointOfView({
-                lat: firstPoint.lat,
-                lng: firstPoint.lng,
-                altitude: 2.5
-            }, 1000);
+
+        if (this.markers.length > 0) {
+            const group = L.featureGroup(this.markers);
+            this.map.fitBounds(group.getBounds().pad(0.1));
         }
     }
 
-    // 渲染城市列表
     renderCityList(searchQuery = '') {
         const cityList = document.getElementById('city-list');
         const memories = searchQuery 
@@ -265,7 +265,7 @@ class UIManager {
         if (memories.length === 0) {
             cityList.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-globe-americas"></i>
+                    <i class="fas fa-map-marked-alt"></i>
                     <p>还没有旅行记忆</p>
                     <small>点击"添加记忆"开始记录吧！</small>
                 </div>
@@ -296,12 +296,15 @@ class UIManager {
             </div>
         `).join('');
 
-        // 绑定卡片事件
         document.querySelectorAll('.city-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 if (!e.target.closest('.city-card-actions')) {
                     const id = card.dataset.id;
                     this.showMemoryDetail(id);
+                    const memory = this.memoryManager.getMemoryById(id);
+                    if (memory) {
+                        this.map.flyTo(memory.coordinates, 10, { duration: 1.5 });
+                    }
                 }
             });
         });
@@ -320,10 +323,9 @@ class UIManager {
             });
         });
 
-        this.updateGlobeMarkers();
+        this.updateMapMarkers();
     }
 
-    // 显示记忆详情
     showMemoryDetail(id) {
         const memory = this.memoryManager.getMemoryById(id);
         if (!memory) return;
@@ -337,6 +339,9 @@ class UIManager {
             <div class="detail-header">
                 <h2 class="detail-city-name">📍 ${memory.name}</h2>
                 <p class="detail-date">📅 ${memory.date}</p>
+                <p style="font-size: 12px; color: #bbb; margin-top: 5px;">
+                    坐标: ${memory.coordinates[0].toFixed(4)}, ${memory.coordinates[1].toFixed(4)}
+                </p>
             </div>
             
             <div class="detail-description">
@@ -363,7 +368,7 @@ class UIManager {
                                     style="position: absolute; top: 5px; right: 5px; 
                                            background: rgba(255,0,0,0.8); color: white; 
                                            border: none; width: 24px; height: 24px; 
-                                           border-radius: 50%; cursor: pointer;">
+                                           border-radius: 50%; cursor: pointer; z-index: 10;">
                                 ×
                             </button>
                         </div>
@@ -380,14 +385,100 @@ class UIManager {
             if (addPhotosBtn) addPhotosBtn.addEventListener('click', () => this.openAddPhotosModal(id));
         }, 0);
 
-        this.updateGlobeMarkers();
+        this.updateMapMarkers();
+    }
+
+    // ============ 🔥 核心功能：点击地图选坐标 ============
+    initMapPicker() {
+        const mapPickerEl = document.getElementById('map-picker');
+        if (!mapPickerEl) return;
         
-        // 旋转地球到该城市
-        this.globe.pointOfView({
-            lat: memory.coordinates[0],
-            lng: memory.coordinates[1],
-            altitude: 1.5
-        }, 1000);
+        const latInput = document.getElementById('latitude');
+        const lngInput = document.getElementById('longitude');
+        
+        // 如果已有坐标，用已有的
+        const existingLat = parseFloat(latInput.value);
+        const existingLng = parseFloat(lngInput.value);
+        const initLat = !isNaN(existingLat) ? existingLat : 35.8617;
+        const initLng = !isNaN(existingLng) ? existingLng : 104.1954;
+        
+        // 初始化小地图
+        if (this.pickerMap) {
+            this.pickerMap.remove();
+        }
+        
+        this.pickerMap = L.map('map-picker').setView([initLat, initLng], 4);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap',
+            maxZoom: 19
+        }).addTo(this.pickerMap);
+        
+        // 如果已有坐标，显示标记
+        if (!isNaN(existingLat) && !isNaN(existingLng)) {
+            this.pickerMarker = L.marker([existingLat, existingLng], {
+                draggable: true
+            }).addTo(this.pickerMap);
+            
+            // 拖拽标记时更新输入框
+            this.pickerMarker.on('dragend', () => {
+                const pos = this.pickerMarker.getLatLng();
+                latInput.value = pos.lat.toFixed(4);
+                lngInput.value = pos.lng.toFixed(4);
+            });
+        }
+        
+        // 点击地图放置/移动标记
+        this.pickerMap.on('click', (e) => {
+            const { lat, lng } = e.latlng;
+            latInput.value = lat.toFixed(4);
+            lngInput.value = lng.toFixed(4);
+            
+            if (this.pickerMarker) {
+                this.pickerMarker.setLatLng([lat, lng]);
+            } else {
+                this.pickerMarker = L.marker([lat, lng], {
+                    draggable: true
+                }).addTo(this.pickerMap);
+                
+                this.pickerMarker.on('dragend', () => {
+                    const pos = this.pickerMarker.getLatLng();
+                    latInput.value = pos.lat.toFixed(4);
+                    lngInput.value = pos.lng.toFixed(4);
+                });
+            }
+            
+            this.showToast(`✅ 已选择: ${lat.toFixed(2)}, ${lng.toFixed(2)}`, 'success');
+        });
+        
+        // 监听手动输入，更新地图标记
+        const updateMarkerFromInput = () => {
+            const lat = parseFloat(latInput.value);
+            const lng = parseFloat(lngInput.value);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                if (this.pickerMarker) {
+                    this.pickerMarker.setLatLng([lat, lng]);
+                } else {
+                    this.pickerMarker = L.marker([lat, lng], {
+                        draggable: true
+                    }).addTo(this.pickerMap);
+                    this.pickerMarker.on('dragend', () => {
+                        const pos = this.pickerMarker.getLatLng();
+                        latInput.value = pos.lat.toFixed(4);
+                        lngInput.value = pos.lng.toFixed(4);
+                    });
+                }
+                this.pickerMap.setView([lat, lng], 8);
+            }
+        };
+        
+        latInput.addEventListener('change', updateMarkerFromInput);
+        lngInput.addEventListener('change', updateMarkerFromInput);
+        
+        // 修复小地图显示问题
+        setTimeout(() => {
+            this.pickerMap.invalidateSize();
+        }, 200);
     }
 
     openAddModal() {
@@ -395,10 +486,14 @@ class UIManager {
         document.getElementById('modal-title').textContent = '✨ 添加旅行记忆';
         document.getElementById('memory-form').reset();
         document.getElementById('memory-id').value = '';
+        document.getElementById('latitude').value = '';
+        document.getElementById('longitude').value = '';
         this.pendingPhotos = [];
         this.renderPhotoPreviews();
         document.getElementById('memory-modal').classList.add('show');
-        setTimeout(() => this.initMapPicker(), 100);
+        
+        // 初始化地图选择器
+        setTimeout(() => this.initMapPicker(), 300);
     }
 
     openEditModal(id) {
@@ -422,26 +517,29 @@ class UIManager {
         this.renderPhotoPreviews();
         
         document.getElementById('memory-modal').classList.add('show');
-        setTimeout(() => this.initMapPicker(), 100);
+        setTimeout(() => this.initMapPicker(), 300);
     }
 
     openAddPhotosModal(id) {
         this.editingMemoryId = id;
         const memory = this.memoryManager.getMemoryById(id);
         if (!memory) return;
-
         this.pendingPhotos = (memory.photos || []).map(p => ({
             dataUrl: p.url,
             caption: p.caption || '',
             isExisting: true
         }));
-
         document.getElementById('modal-title').textContent = '📸 添加照片';
         document.getElementById('memory-modal').classList.add('show');
     }
 
     closeModal() {
         document.getElementById('memory-modal').classList.remove('show');
+        if (this.pickerMap) {
+            this.pickerMap.remove();
+            this.pickerMap = null;
+            this.pickerMarker = null;
+        }
         this.pendingPhotos = [];
         this.editingMemoryId = null;
     }
@@ -457,7 +555,7 @@ class UIManager {
         const description = document.getElementById('description').value.trim();
 
         if (!name || isNaN(lat) || isNaN(lng) || !date) {
-            this.showToast('请填写所有必填字段', 'error');
+            this.showToast('请填写所有必填字段，并在地图上点击选择位置', 'error');
             return;
         }
 
@@ -567,76 +665,6 @@ class UIManager {
         }
     }
 
-    initMapPicker() {
-        // 简化版地图选择器
-        const latInput = document.getElementById('latitude');
-        const lngInput = document.getElementById('longitude');
-        
-        // 提供快速选择中国主要城市的按钮
-        const mapPickerEl = document.getElementById('map-picker');
-        if (mapPickerEl) {
-            const cities = [
-                { name: '北京', lat: 39.9042, lng: 116.4074 },
-                { name: '上海', lat: 31.2304, lng: 121.4737 },
-                { name: '广州', lat: 23.1291, lng: 113.2644 },
-                { name: '深圳', lat: 22.5431, lng: 114.0579 },
-                { name: '成都', lat: 30.5728, lng: 104.0668 },
-                { name: '杭州', lat: 30.2741, lng: 120.1551 },
-                { name: '西安', lat: 34.3416, lng: 108.9398 },
-                { name: '重庆', lat: 29.4316, lng: 106.9123 },
-                { name: '南京', lat: 32.0603, lng: 118.7969 },
-                { name: '武汉', lat: 30.5928, lng: 114.3055 },
-                { name: '厦门', lat: 24.4798, lng: 118.0894 },
-                { name: '三亚', lat: 18.2528, lng: 109.5120 },
-                { name: '大理', lat: 25.5916, lng: 100.2299 },
-                { name: '丽江', lat: 26.8721, lng: 100.2299 },
-                { name: '拉萨', lat: 29.6500, lng: 91.1000 },
-                { name: '哈尔滨', lat: 45.8038, lng: 126.5350 },
-                { name: '青岛', lat: 36.0671, lng: 120.3826 },
-                { name: '苏州', lat: 31.2990, lng: 120.5853 },
-                { name: '桂林', lat: 25.2736, lng: 110.2900 },
-                { name: '长沙', lat: 28.2282, lng: 112.9388 }
-            ];
-            
-            mapPickerEl.innerHTML = `
-                <div style="padding: 15px; height: 100%; overflow-y: auto;">
-                    <p style="margin-bottom: 10px; color: #666; font-size: 14px;">
-                        <i class="fas fa-hand-pointer"></i> 点击选择城市，或手动输入经纬度
-                    </p>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
-                        ${cities.map(city => `
-                            <button type="button" class="city-quick-btn" 
-                                    data-lat="${city.lat}" data-lng="${city.lng}"
-                                    style="padding: 8px; border: 1px solid #ddd; border-radius: 8px; 
-                                           background: white; cursor: pointer; font-size: 13px;
-                                           transition: all 0.2s;">
-                                ${city.name}
-                            </button>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            
-            // 绑定快速选择按钮
-            mapPickerEl.querySelectorAll('.city-quick-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const lat = this.dataset.lat;
-                    const lng = this.dataset.lng;
-                    latInput.value = lat;
-                    lngInput.value = lng;
-                    
-                    // 高亮选中按钮
-                    mapPickerEl.querySelectorAll('.city-quick-btn').forEach(b => {
-                        b.style.background = 'white';
-                        b.style.color = '#333';
-                    });
-                    this.style.background = '#667eea';
-                    this.style.color = 'white';
-                });
-            });
-        }
-    }
-
     openPhotoViewer(url, caption) {
         const viewer = document.getElementById('photo-viewer');
         document.getElementById('viewer-image').src = url;
@@ -705,7 +733,11 @@ class UIManager {
             document.getElementById('city-detail').style.display = 'none';
             document.getElementById('city-list').style.display = 'block';
             this.currentMemoryId = null;
-            this.updateGlobeMarkers();
+            this.updateMapMarkers();
+            if (this.markers.length > 0) {
+                const group = L.featureGroup(this.markers);
+                this.map.fitBounds(group.getBounds().pad(0.1));
+            }
         });
 
         let searchTimeout;
@@ -773,10 +805,10 @@ const photoManager = new PhotoManager();
 const ui = new UIManager(memoryManager, photoManager);
 window.ui = ui;
 
-// 导出/导入按钮
 document.getElementById('export-data-btn')?.addEventListener('click', exportData);
 document.getElementById('import-data-input')?.addEventListener('change', (e) => {
     if (e.target.files[0]) importData(e.target.files[0]);
 });
 
-console.log('🌍 3D 地球旅行记忆地图已就绪！');  
+console.log('💑 旅行记忆地图已就绪！');
+console.log('🖱️ 添加城市时，直接在地图上点击即可自动获取经纬度');
