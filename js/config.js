@@ -3,3 +3,7 @@ const CONFIG = {
     binId: '6a59dd0ada38895dfe69b8f9',
     storageKey: 'travel_memories'
 };
+
+const IMGBB_CONFIG = {
+    apiKey: 'b5e16fd1e922c25448843067301f74d3'
+};
