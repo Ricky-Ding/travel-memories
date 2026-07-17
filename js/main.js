@@ -5,7 +5,14 @@ const mapManager = new MapManager();
 const ui = new UIManager(memoryManager, photoManager, mapManager);
 window.ui = ui;
 
-// 导出/导入功能
+// 启动时自动从云端加载最新数据
+(async () => {
+    await memoryManager.autoLoadFromCloud();
+    ui.renderCityList();
+    console.log('💑 旅行记忆地图已就绪！（自动同步模式）');
+})();
+
+// 导出功能
 document.getElementById('export-data-btn')?.addEventListener('click', () => {
     const memories = memoryManager.getAllMemories();
     const dataStr = JSON.stringify({ memories }, null, 2);
@@ -19,6 +26,7 @@ document.getElementById('export-data-btn')?.addEventListener('click', () => {
     ui.showToast('📥 导出成功', 'success');
 });
 
+// 导入功能
 document.getElementById('import-data-input')?.addEventListener('change', (e) => {
     if (!e.target.files[0]) return;
     const reader = new FileReader();
@@ -37,5 +45,3 @@ document.getElementById('import-data-input')?.addEventListener('change', (e) => 
     };
     reader.readAsText(e.target.files[0]);
 });
-
-console.log('💑 旅行记忆地图已就绪！');
