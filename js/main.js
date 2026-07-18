@@ -1,3 +1,32 @@
+// ============ 登录验证 ============
+(function() {
+    const overlay = document.getElementById('login-overlay');
+    const passwordInput = document.getElementById('login-password');
+    const loginBtn = document.getElementById('login-btn');
+    const loginError = document.getElementById('login-error');
+
+    // 检查是否已登录
+    if (sessionStorage.getItem('travel_logged_in') === 'true') {
+        overlay.style.display = 'none';
+        return;
+    }
+
+    const doLogin = () => {
+        if (passwordInput.value === CONFIG.password) {
+            sessionStorage.setItem('travel_logged_in', 'true');
+            overlay.style.display = 'none';
+        } else {
+            loginError.style.display = 'block';
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+    };
+
+    loginBtn.addEventListener('click', doLogin);
+    passwordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doLogin();
+    });
+})();
 // ============ 主入口 ============
 const memoryManager = new MemoryManager();
 const photoManager = new PhotoManager();
