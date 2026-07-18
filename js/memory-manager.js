@@ -17,26 +17,7 @@ class MemoryManager {
     }
 
     getDefaultMemories() {
-        return [
-            {
-                id: this.generateId(),
-                name: '北京',
-                coordinates: [39.9042, 116.4074],
-                date: '2023年10月',
-                description: '我们的第一次旅行，在北京的胡同里漫步。',
-                photos: [],
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: this.generateId(),
-                name: '上海',
-                coordinates: [31.2304, 121.4737],
-                date: '2023年12月',
-                description: '跨年夜在外滩，看着黄浦江两岸的灯火。',
-                photos: [],
-                createdAt: new Date().toISOString()
-            }
-        ];
+        return [];
     }
 
     saveMemories() {
